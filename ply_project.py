@@ -1,36 +1,72 @@
-tokens = (
-    'NAME', 'NUMBER',                                           # 변수, 상수
-    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS',               # 연산자
-    'LPAREN', 'RPAREN',                                         # (, )
-    'INCLUDE', 'ANGLELPAREN', 'ANGLERPAREN', 'LIBRARY',         # #include 부분(#include, <, >. library)
-    'TYPE',
+reserved = (
+    'VOID', 'CHAR', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE',
+    'IF', 'ELSE', 'WHILE', 'SWITCH', 'CASE', 'FOR', 'CONTINUE', 'BREAK',
+    'DEFAULT', 'RETURN',
+)
+tokens = reserved + (
+    'ID', 'TYPEID',     # 식별자
+    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD',                                  # +, - , *, /, %
+    'OR', 'AND', 'NOT',                                                         # |, &, ~
+    'LOR', 'LAND', 'LNOT',                                                      # ||, &&, !
+    'LT', 'LE', 'GT', 'GE', 'EQ', 'NE',                                         # <, <=, >, >=, ==, !=
+    'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',             # (, ), [, ], {, }
+    'COMMA', 'PERIOD', 'SEMI', 'COLON',                                         # ',', '.', ';', ':'
+    'EQUALS', 'PLUSEQUAL', 'MINUSEQUAL', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL',  # =, +=, -=, *=, /=, %=
+    'PLUSPLUS', 'MINUSMINUS',                                                   # ++, --
+    'INCLUDE',                                                                  # 'LIBRARY'
 )
 # Tokens
 t_PLUS = r'\+'
 t_MINUS = r'-'
 t_TIMES = r'\*'
 t_DIVIDE = r'/'
-t_EQUALS = r'='
+t_MOD = r'%'
+
+t_OR = r'\|'
+t_AND = r'&'
+t_NOT = r'~'
+
+t_LOR = r'\|\|'
+t_LAND = r'&&'
+t_LNOT = r'!'
+
+t_LT = r'<'
+t_LE = r'<='
+t_GT = r'>'
+t_GE = r'>='
+t_EQ = r'=='
+t_NE = r'!='
+
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
+t_LBRACKET = r'\['
+t_RBRACKET = r'\]'
+t_LBRACE = r'\{'
+t_RBRACE = r'\}'
+t_COMMA = r','
+t_PERIOD = r'\.'
+t_SEMI = r';'
+t_COLON = r':'
 
-t_NAME = r'[a-zA-Z_][a-zA-Z0-9_]*'
+t_EQUALS = r'='
+t_TIMESEQUAL = r'\*='
+t_DIVEQUAL = r'/='
+t_MODEQUAL = r'%='
+t_PLUSEQUAL = r'\+='
+t_MINUSEQUAL = r'-='
+t_PLUSPLUS = r'\+\+'
+t_MINUSMINUS = r'--'
+
+# 예약어와 식별자
+reserved_dictionary = {}
+for r in reserved:
+    reserved_dictionary[r.lower()] = r
+def t_ID(t):
+    r'[A-Za-z_][\w_]*'
+    t.type = reserved_dictionary.get(t.value, "ID")
+    return t
 
 t_INCLUDE = r'[#][i][n][c][l][u][d][e]'
-t_ANGLELPAREN = r'<'
-t_ANGLERPAREN = r'>'
-t_LIBRARY = r'[a-zA-Z0-9_]+[.][a-zA-Z0-9_]+'
-
-t_TYPE = r'[a-zA-Z_][a-zA-Z0-9_]*'
-
-def t_NUMBER(t):
-    r'\d+'
-    try:
-        t.value = int(t.value)
-    except ValueError:
-        print("Integer value too large %d", t.value)
-        t.value = 0
-    return t
 
 # Ignored characters
 t_ignore = " \t"
@@ -47,91 +83,36 @@ def t_error(t):
 import ply.lex as lex
 lexer = lex.lex()
 
-# Parsing rules
-precedence = (
-    ('left', 'PLUS', 'MINUS'),
-    ('left', 'TIMES', 'DIVIDE'),
-    ('right', 'UMINUS'),
-)
-
-# dictionary of names
-names = {}
-
-# 타입 이름
-types = {'int', 'double', 'float', 'long', }
-
-# 라이브러리 이름
-libraries = {}
-
-def p_statement_assign(t):
-    'statement : NAME EQUALS expression'
-    names[t[1]] = t[3]
-
-def p_statement_expr(t):
-    'statement : expression'
-    print(t[1])
-
-def p_expression_binop(t):
-    '''expression : expression PLUS expression
-                  | expression MINUS expression
-                  | expression TIMES expression
-                  | expression DIVIDE expression'''
-    if t[2] == '+':
-        t[0] = t[1] + t[3]
-    elif t[2] == '-':
-        t[0] = t[1] - t[3]
-    elif t[2] == '*':
-        t[0] = t[1] * t[3]
-    elif t[2] == '/':
-        t[0] = t[1] / t[3]
-
-def p_expression_uminus(t):
-    'expression : MINUS expression %prec UMINUS'
-    t[0] = -t[2]
-
-def p_expression_group(t):
-    'expression : LPAREN expression RPAREN'
-    t[0] = t[2]
-
-def p_expression_number(t):
-    'expression : NUMBER'
-    t[0] = t[1]
-
-def p_expression_name(t):
-    'expression : NAME'
-    try:
-        t[0] = names[t[1]]
-    except LookupError:
-        print("Undefined name '%s'" % t[1])
-        t[0] = 0
-
-# 변수 선언 부분
-def p_expression_variableDeclaration(t):
-    'expression : TYPE NAME'
-    if(t[1] in types == True):
-        t[0] = names[t[2]]
-        print("변수 선언 완료")
-    else:
-        p_error(t)
-
-# 변수 초기화 부분
-def p_statement_initVariable(t):
-    'statement : TYPE NAME EQUALS expression'
-    names[t[2]] = t[4]
-    print("변수 초기화 완료")
 
 # #include 부분(라이브러리)
-def p_expression_library(t):
-    'expression : LIBRARY'
-    try:
-        t[0] = libraries[t[1]]
-    except LookupError:
-        print("Undefined library '%s" % t[1])
-        t[0] = 0
-def p_statement_includeLibrary(t):
-    'statement : INCLUDE ANGLELPAREN LIBRARY ANGLERPAREN'
+def p_include_statement(t):
+    'start : INCLUDE LT ID PERIOD ID GT'
     print("include 완료")
-# #include 부분 끝
+def p_declaration_start(t):
+    'start : declaration'
+    print("완료")
+
+#선언
+def p_declaration(t):
+    'declaration : declaration_specifiers ID SEMI'
+    print("선언 완료")
+# def p_declaration_list(t):
+#   'declaration : declaration_specifiers init_declarator_list SEMI'
+
+def p_declaration_specifier(t):
+    'declaration_specifiers : type_specifier'
+def p_type_specifier(t):
+    '''type_specifier : VOID
+                      | CHAR
+                      | SHORT
+                      | INT
+                      | LONG
+                      | FLOAT
+                      | DOUBLE
+                      | TYPEID
+                      '''
+    print("자료형")
+
 
 def p_error(t):
     print("Syntax error at '%s'" % t.value)
