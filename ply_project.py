@@ -1,10 +1,13 @@
+count_test = 0
+
 reserved = (
     'VOID', 'CHAR', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE',
     'IF', 'ELSE', 'WHILE', 'SWITCH', 'CASE', 'FOR', 'CONTINUE', 'BREAK',
     'DEFAULT', 'RETURN',
 )
 tokens = reserved + (
-    'ID', 'TYPEID',     # 식별자
+    'ID', 'TYPEID',                                                             # 식별자
+    'NNUM', 'FNUM',                                                             # 자연수, 양의 실수, 문자와 문자열이 필요할 수도?
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD',                                  # +, - , *, /, %
     'OR', 'AND', 'NOT',                                                         # |, &, ~
     'LOR', 'LAND', 'LNOT',                                                      # ||, &&, !
@@ -13,7 +16,7 @@ tokens = reserved + (
     'COMMA', 'PERIOD', 'SEMI', 'COLON',                                         # ',', '.', ';', ':'
     'EQUALS', 'PLUSEQUAL', 'MINUSEQUAL', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL',  # =, +=, -=, *=, /=, %=
     'PLUSPLUS', 'MINUSMINUS',                                                   # ++, --
-    'INCLUDE',                                                                  # 'LIBRARY'
+    'INCLUDE',                                                                  # #include
 )
 # Tokens
 t_PLUS = r'\+'
@@ -57,6 +60,14 @@ t_MINUSEQUAL = r'-='
 t_PLUSPLUS = r'\+\+'
 t_MINUSMINUS = r'--'
 
+def t_FNUM(t):
+    r'[\d+][\.][\d+]'
+    return t
+def t_NNUM(t):
+    r'\d+'
+    return t
+
+
 # 예약어와 식별자
 reserved_dictionary = {}
 for r in reserved:
@@ -83,24 +94,42 @@ def t_error(t):
 import ply.lex as lex
 lexer = lex.lex()
 
+# 시작
+def p_start_syntex(t):
+    '''start : include_statement
+             | variable_statement
+             | parameter_list
+             | function_statement
+
+    '''
 
 # #include 부분(라이브러리)
 def p_include_statement(t):
-    'start : INCLUDE LT ID PERIOD ID GT'
+    'include_statement : INCLUDE LT ID PERIOD ID GT'
     print("include 완료")
-def p_declaration_start(t):
-    'start : declaration'
-    print("완료")
 
-#선언
-def p_declaration(t):
-    'declaration : declaration_specifiers ID SEMI'
-    print("선언 완료")
-# def p_declaration_list(t):
-#   'declaration : declaration_specifiers init_declarator_list SEMI'
+# 변수 선언
+def p_variable_statement(t):
+    '''variable_statement : type_specifier ID SEMI
+                          | type_specifier ID LBRACKET NNUM RBRACKET SEMI
+    '''
+    print("변수 선언 완료")
 
-def p_declaration_specifier(t):
-    'declaration_specifiers : type_specifier'
+# 매개변수(ex: int a, int b, ..., int z)
+def p_empty(t):
+    'empty : '
+
+def p_parameter_list(t):
+    '''parameter_list : type_specifier ID
+                      | empty
+                      | type_specifier ID COMMA parameter_list
+    '''
+    # print("매개변수 완료")
+    # global count_test
+    # count_test += 1
+    # print(count_test)
+
+# 자료형
 def p_type_specifier(t):
     '''type_specifier : VOID
                       | CHAR
@@ -111,7 +140,20 @@ def p_type_specifier(t):
                       | DOUBLE
                       | TYPEID
                       '''
-    print("자료형")
+
+# 함수 내부 구현
+def p_body_expression(t):
+    '''body_expression : variable_statement
+                       | body_expression variable_statement
+    '''
+
+# 함수 선언
+def p_function_statement(t):
+    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN LBRACE body_expression RBRACE
+                          | type_specifier ID LPAREN parameter_list RPAREN SEMI
+    '''
+    print("함수 완료")
+
 
 
 def p_error(t):
