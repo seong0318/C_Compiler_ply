@@ -96,11 +96,10 @@ lexer = lex.lex()
 
 # 시작
 def p_start_syntex(t):
-    '''start : include_statement
+    '''start : include_statement start
              | variable_statement
              | parameter_list
              | function_statement
-
     '''
 
 # #include 부분(라이브러리)
@@ -129,6 +128,13 @@ def p_parameter_list(t):
     # count_test += 1
     # print(count_test)
 
+# 인자(ex: (a, b, c)
+def p_factor_list(t):
+    '''factor_list : ID
+                   | factor_list COMMA ID
+    '''
+
+
 # 자료형
 def p_type_specifier(t):
     '''type_specifier : VOID
@@ -141,16 +147,21 @@ def p_type_specifier(t):
                       | TYPEID
                       '''
 
+# 여러 문법들
+def p_statement(t):
+    '''statement : body_statement
+
+    '''
+
 # 함수 내부 구현
-def p_body_expression(t):
-    '''body_expression : variable_statement
-                       | body_expression variable_statement
+def p_body_statement(t):
+    '''body_statement : variable_statement
     '''
 
 # 함수 선언
 def p_function_statement(t):
-    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN LBRACE body_expression RBRACE
-                          | type_specifier ID LPAREN parameter_list RPAREN SEMI
+    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN LBRACE body_statement RBRACE
+                          | type_specifier ID LPAREN parameter_list RPAREN LBRACE RBRACE SEMI
     '''
     print("함수 완료")
 
@@ -162,6 +173,7 @@ def p_error(t):
 import ply.yacc as yacc
 parser = yacc.yacc()
 
+'''
 while True:
     try:
         s = input('calc > ')  # Use raw_input on Python 2
@@ -178,3 +190,19 @@ while True:
     #실험
 
     parser.parse(s)
+'''
+
+# 파일 읽기
+try:
+    f = open('test.txt', 'r')
+    s = f.read()
+except EOFError:
+    print("error")
+
+lexer.input(s)
+while True:
+        tok = lexer.token()
+        if not tok:
+            break
+        print(tok)
+parser.parse(s)
