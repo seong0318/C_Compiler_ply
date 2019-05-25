@@ -9,7 +9,7 @@ tokens = reserved + (
     'ID', 'TYPEID',                                                             # 식별자
     'NNUM', 'FNUM',                                                             # 자연수, 양의 실수, 문자와 문자열이 필요할 수도?
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD',                                  # +, - , *, /, %
-    'OR', 'AND', 'NOT',                                                         # |, &, ~
+    'OR', 'AND', 'XOR','NOT',                                                   # |, &, ^, ~
     'LOR', 'LAND', 'LNOT',                                                      # ||, &&, !
     'LT', 'LE', 'GT', 'GE', 'EQ', 'NE',                                         # <, <=, >, >=, ==, !=
     'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',             # (, ), [, ], {, }
@@ -27,6 +27,7 @@ t_MOD = r'%'
 
 t_OR = r'\|'
 t_AND = r'&'
+t_XOR = r'\^'
 t_NOT = r'~'
 
 t_LOR = r'\|\|'
@@ -97,9 +98,8 @@ lexer = lex.lex()
 # 시작
 def p_start_syntex(t):
     '''start : include_statement start
-             | variable_statement
-             | parameter_list
              | function_statement
+             | assign_expression
     '''
 
 # #include 부분(라이브러리)
@@ -120,6 +120,8 @@ def p_empty(t):
 
 def p_parameter_list(t):
     '''parameter_list : type_specifier ID
+                      | NNUM
+                      | FNUM
                       | empty
                       | type_specifier ID COMMA parameter_list
     '''
@@ -147,6 +149,101 @@ def p_type_specifier(t):
                       | TYPEID
                       '''
 
+
+
+# expression
+def p_expression_list(t):
+    '''expression : assign_expression
+                  | expression COMMA assign_expression
+    '''
+
+# 변수에 값 할당하는 부분
+def p_assign_expression(t):
+    '''assign_expression : logic_expression
+                         | prefix_expression assign_operator assign_expression
+    '''
+    print("값 할당 완료")
+def p_assign_operator(t):
+    '''assign_operator : EQUALS
+                       | PLUSEQUAL
+                       | MINUSEQUAL
+                       | TIMESEQUAL
+                       | DIVEQUAL
+                       | MODEQUAL
+    '''
+
+# -------logic_expression 관련-------
+# prefix
+def p_prefix_expression(t):
+    '''prefix_expression : postfix_expression
+                         | PLUSPLUS prefix_expression
+                         | MINUSMINUS prefix_expression
+    '''
+    print("prefix 완료")
+# 변수와 상수
+def p_target_expression(t):
+    '''target : ID
+              | NNUM
+              | FNUM
+    '''
+# postfix 배열 다시 볼 것
+def p_postfix_expression(t):
+    '''postfix_expression : target
+                          | target LBRACKET expression RBRACKET
+                          | target LPAREN RPAREN
+                          | target LPAREN factor_list RPAREN
+                          | target PLUSPLUS
+                          | target MINUSMINUS
+    '''
+# 산술 표현식
+def p_arithmetic_expression(t):
+    '''arithmetic_expression : prefix_expression
+                             | arithmetic_expression PLUS prefix_expression
+                             | arithmetic_expression MINUS prefix_expression
+                             | arithmetic_expression TIMES prefix_expression
+                             | arithmetic_expression DIVIDE prefix_expression
+                             | arithmetic_expression MOD prefix_expression
+    '''
+# 대소 비교
+def p_logic_compare_expression(t):
+    '''logic_compare_expression : arithmetic_expression
+                                | logic_compare_expression EQ arithmetic_expression
+                                | logic_compare_expression NE arithmetic_expression
+                                | logic_compare_expression LT arithmetic_expression
+                                | logic_compare_expression LE arithmetic_expression
+                                | logic_compare_expression GT arithmetic_expression
+                                | logic_compare_expression GE arithmetic_expression
+    '''
+# 비트 연산
+def p_bit_or_expression(t):
+    '''bit_or_expression : bit_xor_expression
+                         | bit_or_expression OR bit_xor_expression
+    '''
+def p_bit_xor_expression(t):
+    '''bit_xor_expression : bit_and_expression
+                          | bit_xor_expression XOR bit_and_expression
+    '''
+def p_bit_and_expression(t):
+    '''bit_and_expression : logic_compare_expression
+                          | bit_and_expression AND logic_compare_expression
+    '''
+# 논리 연산
+def p_logic_or_expression(t):
+    '''logic_or_expression : logic_and_expression
+                           | logic_or_expression LOR logic_and_expression
+    '''
+def p_logic_and_expression(t):
+    '''logic_and_expression : bit_or_expression
+                            | logic_and_expression LAND bit_or_expression
+    '''
+# 논리 표현
+def p_logic_expression(t):
+    'logic_expression : logic_or_expression'
+    print("논리 표현 완료")
+
+
+
+
 # 여러 문법들
 def p_statement(t):
     '''statement : body_statement
@@ -155,13 +252,14 @@ def p_statement(t):
 
 # 함수 내부 구현
 def p_body_statement(t):
-    '''body_statement : variable_statement
+    '''body_statement : LBRACE variable_statement RBRACE
+                      | LBRACE RBRACE
     '''
 
 # 함수 선언
 def p_function_statement(t):
-    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN LBRACE body_statement RBRACE
-                          | type_specifier ID LPAREN parameter_list RPAREN LBRACE RBRACE SEMI
+    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN body_statement
+
     '''
     print("함수 완료")
 
