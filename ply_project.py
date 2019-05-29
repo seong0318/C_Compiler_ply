@@ -97,7 +97,8 @@ lexer = lex.lex()
 
 # 시작
 def p_start_syntex(t):
-    '''start : include_statement start
+    '''start : include_statement
+             | iteration_statement
              | function_statement
              | assign_expression
     '''
@@ -153,8 +154,8 @@ def p_type_specifier(t):
 
 # expression
 def p_expression_list(t):
-    '''expression : assign_expression
-                  | expression COMMA assign_expression
+    '''expression_list : assign_expression
+                       | expression_list COMMA assign_expression
     '''
 
 # 변수에 값 할당하는 부분
@@ -189,7 +190,7 @@ def p_target_expression(t):
 # postfix 배열 다시 볼 것
 def p_postfix_expression(t):
     '''postfix_expression : target
-                          | target LBRACKET expression RBRACKET
+                          | target LBRACKET expression_list RBRACKET
                           | target LPAREN RPAREN
                           | target LPAREN factor_list RPAREN
                           | target PLUSPLUS
@@ -245,14 +246,19 @@ def p_logic_expression(t):
 
 
 # 여러 문법들
-def p_statement(t):
-    '''statement : body_statement
-
+def p_grammer_list(t):
+    '''grammar_list : grammar_statement
+                    | grammar_list grammar_statement
+    '''
+def p_grammer_statement(t):
+    '''grammar_statement : expression_list SEMI
+                         | body_statement
+                         | iteration_statement
     '''
 
-# 함수 내부 구현
+# 함수 내부 구현(미완성)
 def p_body_statement(t):
-    '''body_statement : LBRACE variable_statement RBRACE
+    '''body_statement : LBRACE grammar_list RBRACE
                       | LBRACE RBRACE
     '''
 
@@ -263,7 +269,17 @@ def p_function_statement(t):
     '''
     print("함수 완료")
 
-
+# 반복문
+def p_expression_for(t):
+    '''expression_for : expression_list
+                      | type_specifier expression_list
+                      | empty
+    '''
+def p_iteration_statement(t):
+    '''iteration_statement : WHILE LPAREN expression_list RPAREN grammar_statement
+                           | FOR LPAREN expression_for SEMI expression_for SEMI expression_for RPAREN grammar_statement
+    '''
+    print("반복문 완료")
 
 def p_error(t):
     print("Syntax error at '%s'" % t.value)
@@ -292,7 +308,7 @@ while True:
 
 # 파일 읽기
 try:
-    f = open('test.txt', 'r')
+    f = open('test.c', 'r')
     s = f.read()
 except EOFError:
     print("error")
