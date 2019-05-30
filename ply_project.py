@@ -1,4 +1,9 @@
-count_test = 0
+includeNum = 0
+declaredFunctionNum = 0
+declaredVariableNum = 0
+conditionalNum = 0
+loopNum = 0
+calledFunctionNum = 0
 
 reserved = (
     'VOID', 'CHAR', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE',
@@ -6,7 +11,7 @@ reserved = (
     'DEFAULT', 'RETURN',
 )
 tokens = reserved + (
-    'ID', 'TYPEID',                                                             # 식별자
+    'ID', 'TYPEID', 'CONSTSTR', 'CONSTCHAR',                                    # 식별자
     'NNUM', 'FNUM',                                                             # 자연수, 양의 실수, 문자와 문자열이 필요할 수도?
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MOD',                                  # +, - , *, /, %
     'OR', 'AND', 'XOR','NOT',                                                   # |, &, ^, ~
@@ -61,6 +66,9 @@ t_MINUSEQUAL = r'-='
 t_PLUSPLUS = r'\+\+'
 t_MINUSMINUS = r'--'
 
+t_CONSTSTR = r'\"[A-Za-z_\d\!=\+\-\*\/\%\:\\\(\)\.\,\ ]*\"'
+t_CONSTCHAR = r'\'[A-Za-z_\d\!=\+\-\*\/\%\:\\\(\)\.\,\ ]\''
+
 def t_FNUM(t):
     r'[\d+][\.][\d+]'
     return t
@@ -97,46 +105,87 @@ lexer = lex.lex()
 
 # 시작
 def p_start_syntex(t):
-    '''start : include_statement
-             | iteration_statement
-             | function_statement
-             | assign_expression
+    '''start : global_statement
+             | start global_statement
     '''
 
-# #include 부분(라이브러리)
+# 전역 변수와 함수(시작부분)
+def p_global_statement(t):
+    '''global_statement : include_statement
+                        | function_statement
+                        | declaration_statement
+    '''
+
+# #Include 부분
 def p_include_statement(t):
-    'include_statement : INCLUDE LT ID PERIOD ID GT'
-    print("include 완료")
-
-# 변수 선언
-def p_variable_statement(t):
-    '''variable_statement : type_specifier ID SEMI
-                          | type_specifier ID LBRACKET NNUM RBRACKET SEMI
+    '''include_statement : INCLUDE LT ID GT
+                         | INCLUDE LT ID PERIOD ID GT
     '''
-    print("변수 선언 완료")
+    global includeNum
+    includeNum += 1
+#    print("include 완료")
+
+# 선언 부분(2개의 shift/reduce 해결해야함)
+def p_declaration_statement(t):
+    '''declaration_statement : function_call SEMI
+                             | variable_statement SEMI
+    '''
+def p_declaration_list(t):
+    '''declaration_list : declaration_statement
+                        | declaration_list declaration_statement
+    '''
+    #print("declaration_list")
+
+# 함수 호출(semi를 declaration으로 옮김 )
+def p_function_call(t):
+    '''function_call : ID LPAREN RPAREN
+                     | ID LPAREN factor_list RPAREN
+                     | ID LPAREN parameter_list RPAREN
+    '''
+    global calledFunctionNum
+    calledFunctionNum += 1
+#    print("함수 호출 완료")
+
+# 변수 선언(semi declaration 으로 옮김)
+def p_variable_statement(t):
+    '''variable_statement : type_specifier variable_init
+                          | type_specifier ID LBRACKET NNUM RBRACKET
+    '''
+    global declaredVariableNum
+    declaredVariableNum += 1
+#    print("변수 선언 완료")
+
+# 초기화
+def p_variable_init(t):
+    '''variable_init : ID
+                     | ID EQUALS init_statement
+    '''
+def p_init_statement(t):
+    'init_statement : assign_expression'
+def p_init_list(t):
+    '''init_list : init_statement
+                 | init_list COMMA init_statement
+    '''
 
 # 매개변수(ex: int a, int b, ..., int z)
+# 매개변와 인자에서 shift/reduce 1개 발생
 def p_empty(t):
     'empty : '
-
 def p_parameter_list(t):
     '''parameter_list : type_specifier ID
-                      | NNUM
-                      | FNUM
+                      | VOID
                       | empty
                       | type_specifier ID COMMA parameter_list
     '''
     # print("매개변수 완료")
-    # global count_test
-    # count_test += 1
-    # print(count_test)
 
 # 인자(ex: (a, b, c)
 def p_factor_list(t):
-    '''factor_list : ID
-                   | factor_list COMMA ID
+    '''factor_list : CONSTSTR
+                   | CONSTCHAR
+                   | arithmetic_expression
+                   | factor_list COMMA factor_list
     '''
-
 
 # 자료형
 def p_type_specifier(t):
@@ -150,8 +199,6 @@ def p_type_specifier(t):
                       | TYPEID
                       '''
 
-
-
 # expression
 def p_expression_list(t):
     '''expression_list : assign_expression
@@ -163,7 +210,7 @@ def p_assign_expression(t):
     '''assign_expression : logic_expression
                          | prefix_expression assign_operator assign_expression
     '''
-    print("값 할당 완료")
+#    print("값 할당 완료")
 def p_assign_operator(t):
     '''assign_operator : EQUALS
                        | PLUSEQUAL
@@ -179,13 +226,19 @@ def p_prefix_expression(t):
     '''prefix_expression : postfix_expression
                          | PLUSPLUS prefix_expression
                          | MINUSMINUS prefix_expression
+                         | AND prefix_expression
+                         | TIMES prefix_expression
+                         | NOT prefix_expression
+                         | LNOT prefix_expression
     '''
-    print("prefix 완료")
+#    print("prefix 완료")
 # 변수와 상수
 def p_target_expression(t):
     '''target : ID
               | NNUM
               | FNUM
+              | function_call
+              | LPAREN expression_list RPAREN
     '''
 # postfix 배열 다시 볼 것
 def p_postfix_expression(t):
@@ -240,10 +293,7 @@ def p_logic_and_expression(t):
 # 논리 표현
 def p_logic_expression(t):
     'logic_expression : logic_or_expression'
-    print("논리 표현 완료")
-
-
-
+#    print("논리 표현 완료")
 
 # 여러 문법들
 def p_grammer_list(t):
@@ -254,20 +304,24 @@ def p_grammer_statement(t):
     '''grammar_statement : expression_list SEMI
                          | body_statement
                          | iteration_statement
+                         | if_statement
+                         | branch_statement
+                         | declaration_statement
     '''
 
-# 함수 내부 구현(미완성)
+# 중괄호 내부 구현(미완성)
 def p_body_statement(t):
     '''body_statement : LBRACE grammar_list RBRACE
-                      | LBRACE RBRACE
-    '''
 
-# 함수 선언
+    '''
+#    print("중괄호 내부 구현")
+
+# 함수 구현
 def p_function_statement(t):
-    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN body_statement
-
-    '''
-    print("함수 완료")
+    'function_statement : type_specifier ID LPAREN parameter_list RPAREN body_statement'
+    global declaredFunctionNum
+    declaredFunctionNum += 1
+#    print("함수 완료")
 
 # 반복문
 def p_expression_for(t):
@@ -279,7 +333,32 @@ def p_iteration_statement(t):
     '''iteration_statement : WHILE LPAREN expression_list RPAREN grammar_statement
                            | FOR LPAREN expression_for SEMI expression_for SEMI expression_for RPAREN grammar_statement
     '''
-    print("반복문 완료")
+    global loopNum
+    loopNum += 1
+#    print("반복문 완료")
+
+# if문 else 부분에서 1개 shift/reduce 오류???
+def p_if_statement(t):
+    '''if_statement : IF LPAREN expression_list RPAREN grammar_statement else_statement
+
+    '''
+    global conditionalNum
+    conditionalNum += 1
+#    print("if 문 완료")
+def p_else_statement(t):
+    '''else_statement : empty
+                      | ELSE grammar_statement
+    '''
+#    print("else 완료")
+
+# 분기문
+def p_branch_statement(t):
+    '''branch_statement : RETURN expression_list SEMI
+                        | RETURN empty SEMI
+                        | CONTINUE SEMI
+                        | BREAK SEMI
+    '''
+#    print("분기 완료")
 
 def p_error(t):
     print("Syntax error at '%s'" % t.value)
@@ -314,9 +393,17 @@ except EOFError:
     print("error")
 
 lexer.input(s)
+'''
 while True:
         tok = lexer.token()
         if not tok:
             break
         print(tok)
+'''
 parser.parse(s)
+print("#include: %d" %includeNum)
+print("Declared Functions: %d" %declaredFunctionNum)
+print("Declared Variables: %d" %declaredVariableNum)
+print("Conditional Statements: %d" %conditionalNum)
+print("Loop: %d" %loopNum)
+print("Called Function: %d" %calledFunctionNum)
