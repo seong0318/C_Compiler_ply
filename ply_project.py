@@ -7,8 +7,8 @@ calledFunctionNum = 0
 
 reserved = (
     'VOID', 'CHAR', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE',
-    'IF', 'ELSE', 'WHILE', 'SWITCH', 'CASE', 'FOR', 'CONTINUE', 'BREAK',
-    'DEFAULT', 'RETURN',
+    'IF', 'ELSE', 'WHILE', 'FOR', 'CONTINUE', 'BREAK',
+    'RETURN',
 )
 tokens = reserved + (
     'ID', 'TYPEID', 'CONSTSTR', 'CONSTCHAR',                                    # 식별자
@@ -18,7 +18,7 @@ tokens = reserved + (
     'LOR', 'LAND', 'LNOT',                                                      # ||, &&, !
     'LT', 'LE', 'GT', 'GE', 'EQ', 'NE',                                         # <, <=, >, >=, ==, !=
     'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',             # (, ), [, ], {, }
-    'COMMA', 'PERIOD', 'SEMI', 'COLON',                                         # ',', '.', ';', ':'
+    'COMMA', 'PERIOD', 'SEMI',                                                  # ',', '.', ';'
     'EQUALS', 'PLUSEQUAL', 'MINUSEQUAL', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL',  # =, +=, -=, *=, /=, %=
     'PLUSPLUS', 'MINUSMINUS',                                                   # ++, --
     'INCLUDE',                                                                  # #include
@@ -55,7 +55,6 @@ t_RBRACE = r'\}'
 t_COMMA = r','
 t_PERIOD = r'\.'
 t_SEMI = r';'
-t_COLON = r':'
 
 t_EQUALS = r'='
 t_TIMESEQUAL = r'\*='
@@ -76,7 +75,6 @@ def t_NNUM(t):
     r'\d+'
     return t
 
-
 # 예약어와 식별자
 reserved_dictionary = {}
 for r in reserved:
@@ -86,9 +84,10 @@ def t_ID(t):
     t.type = reserved_dictionary.get(t.value, "ID")
     return t
 
+# #include
 t_INCLUDE = r'[#][i][n][c][l][u][d][e]'
 
-# Ignored characters
+# 공백문자
 t_ignore = " \t"
 
 def t_newline(t):
@@ -125,18 +124,13 @@ def p_include_statement(t):
     includeNum += 1
 #    print("include 완료")
 
-# 선언 부분(2개의 shift/reduce 해결해야함)
+# 선언 부분
 def p_declaration_statement(t):
     '''declaration_statement : function_call SEMI
                              | variable_statement SEMI
     '''
-def p_declaration_list(t):
-    '''declaration_list : declaration_statement
-                        | declaration_list declaration_statement
-    '''
-    #print("declaration_list")
 
-# 함수 호출(semi를 declaration으로 옮김 )
+# 함수 호출
 def p_function_call(t):
     '''function_call : ID LPAREN RPAREN
                      | ID LPAREN factor_list RPAREN
@@ -162,24 +156,18 @@ def p_variable_init(t):
     '''
 def p_init_statement(t):
     'init_statement : assign_expression'
-def p_init_list(t):
-    '''init_list : init_statement
-                 | init_list COMMA init_statement
-    '''
 
 # 매개변수(ex: int a, int b, ..., int z)
-# 매개변와 인자에서 shift/reduce 1개 발생
 def p_empty(t):
     'empty : '
 def p_parameter_list(t):
     '''parameter_list : type_specifier ID
                       | VOID
-                      | empty
                       | type_specifier ID COMMA parameter_list
     '''
     # print("매개변수 완료")
 
-# 인자(ex: (a, b, c)
+# 인자(ex: (a, b, c))
 def p_factor_list(t):
     '''factor_list : CONSTSTR
                    | CONSTCHAR
@@ -240,12 +228,10 @@ def p_target_expression(t):
               | function_call
               | LPAREN expression_list RPAREN
     '''
-# postfix 배열 다시 볼 것
+# postfix
 def p_postfix_expression(t):
     '''postfix_expression : target
                           | target LBRACKET expression_list RBRACKET
-                          | target LPAREN RPAREN
-                          | target LPAREN factor_list RPAREN
                           | target PLUSPLUS
                           | target MINUSMINUS
     '''
@@ -309,16 +295,16 @@ def p_grammer_statement(t):
                          | declaration_statement
     '''
 
-# 중괄호 내부 구현(미완성)
+# 중괄호 내부 구현
 def p_body_statement(t):
-    '''body_statement : LBRACE grammar_list RBRACE
-
-    '''
+    'body_statement : LBRACE grammar_list RBRACE'
 #    print("중괄호 내부 구현")
 
 # 함수 구현
 def p_function_statement(t):
-    'function_statement : type_specifier ID LPAREN parameter_list RPAREN body_statement'
+    '''function_statement : type_specifier ID LPAREN parameter_list RPAREN body_statement
+                          | type_specifier ID LPAREN RPAREN body_statement
+    '''
     global declaredFunctionNum
     declaredFunctionNum += 1
 #    print("함수 완료")
@@ -337,11 +323,9 @@ def p_iteration_statement(t):
     loopNum += 1
 #    print("반복문 완료")
 
-# if문 else 부분에서 1개 shift/reduce 오류???
+# if문 else
 def p_if_statement(t):
-    '''if_statement : IF LPAREN expression_list RPAREN grammar_statement else_statement
-
-    '''
+    'if_statement : IF LPAREN expression_list RPAREN grammar_statement else_statement'
     global conditionalNum
     conditionalNum += 1
 #    print("if 문 완료")
@@ -349,7 +333,7 @@ def p_else_statement(t):
     '''else_statement : empty
                       | ELSE grammar_statement
     '''
-#    print("else 완료")
+#    print("else 문 완료")
 
 # 분기문
 def p_branch_statement(t):
@@ -366,44 +350,31 @@ def p_error(t):
 import ply.yacc as yacc
 parser = yacc.yacc()
 
-'''
+def printresult():
+    print("#include: %d" % includeNum)
+    print("Declared Functions: %d" % declaredFunctionNum)
+    print("Declared Variables: %d" % declaredVariableNum)
+    print("Conditional Statements: %d" % conditionalNum)
+    print("Loop: %d" % loopNum)
+    print("Called Function: %d" % calledFunctionNum)
+
 while True:
+    includeNum = 0
+    declaredFunctionNum = 0
+    declaredVariableNum = 0
+    conditionalNum = 0
+    loopNum = 0
+    calledFunctionNum = 0
+
+    filepath = input()
+
+    # 파일 읽기
     try:
-        s = input('calc > ')  # Use raw_input on Python 2
-    except EOFError:
-        break
+        f = open(filepath, 'r')
+        s = f.read()
+        lexer.input(s)
+        parser.parse(s)
+        printresult()
 
-    #실험
-    lexer.input(s)
-    while True:
-        tok = lexer.token()
-        if not tok:
-            break
-        print(tok)
-    #실험
-
-    parser.parse(s)
-'''
-
-# 파일 읽기
-try:
-    f = open('test.c', 'r')
-    s = f.read()
-except EOFError:
-    print("error")
-
-lexer.input(s)
-'''
-while True:
-        tok = lexer.token()
-        if not tok:
-            break
-        print(tok)
-'''
-parser.parse(s)
-print("#include: %d" %includeNum)
-print("Declared Functions: %d" %declaredFunctionNum)
-print("Declared Variables: %d" %declaredVariableNum)
-print("Conditional Statements: %d" %conditionalNum)
-print("Loop: %d" %loopNum)
-print("Called Function: %d" %calledFunctionNum)
+    except (FileNotFoundError, EOFError):
+        print("Error")
